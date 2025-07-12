@@ -1,0 +1,152 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum ProfileVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum SwapRequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+  COMPLETED
+}
+
+enum AvailabilityType {
+  WEEKDAYS
+  WEEKENDS
+  EVENINGS
+  MORNINGS
+  FLEXIBLE
+}
+
+model User {
+  id                String   @id @default(cuid())
+  email             String   @unique
+  password          String
+  firstName         String
+  lastName          String
+  location          String?
+  bio               String?
+  profilePhoto      String?
+  profileVisibility ProfileVisibility @default(PUBLIC)
+  role              UserRole @default(USER)
+  isAvailable       Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  availabilities    UserAvailability[]
+  userSkills        UserSkill[]
+  sentRequests      SwapRequest[] @relation("RequestSender")
+  receivedRequests  SwapRequest[] @relation("RequestReceiver")
+  givenFeedback     Feedback[] @relation("FeedbackGiver")
+  receivedFeedback  Feedback[] @relation("FeedbackReceiver")
+
+  @@map("users")
+}
+
+model Skill {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  category    String
+  description String?
+  isCustom    Boolean  @default(false)
+  createdBy   String?  // User ID who created custom skill
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  userSkills  UserSkill[]
+  offeredInRequests  SwapRequest[] @relation("OfferedSkill")
+  requestedInRequests SwapRequest[] @relation("RequestedSkill")
+
+  @@map("skills")
+}
+
+model UserSkill {
+  id        String   @id @default(cuid())
+  userId    String
+  skillId   String
+  level     Int      @default(1) // 1-5 scale
+  skillType String   // "OFFERED" or "WANTED"
+  createdAt DateTime @default(now())
+
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill     Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, skillId, skillType])
+  @@map("user_skills")
+}
+
+model UserAvailability {
+  id             String           @id @default(cuid())
+  userId         String
+  availabilityType AvailabilityType
+  startTime      String?          // Format: "HH:MM"
+  endTime        String?          // Format: "HH:MM"
+  daysOfWeek     String[]         // ["monday", "tuesday", etc.]
+  createdAt      DateTime         @default(now())
+
+  // Relations
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_availabilities")
+}
+
+model SwapRequest {
+  id              String            @id @default(cuid())
+  senderId        String
+  receiverId      String
+  offeredSkillId  String
+  requestedSkillId String
+  message         String?
+  status          SwapRequestStatus @default(PENDING)
+  scheduledDate   DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  // Relations
+  sender          User              @relation("RequestSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver        User              @relation("RequestReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  offeredSkill    Skill             @relation("OfferedSkill", fields: [offeredSkillId], references: [id])
+  requestedSkill  Skill             @relation("RequestedSkill", fields: [requestedSkillId], references: [id])
+  feedback        Feedback[]
+
+  @@map("swap_requests")
+}
+
+model Feedback {
+  id            String   @id @default(cuid())
+  swapRequestId String
+  giverId       String
+  receiverId    String
+  rating        Int      // 1-5 stars
+  comment       String?
+  createdAt     DateTime @default(now())
+
+  // Relations
+  swapRequest   SwapRequest @relation(fields: [swapRequestId], references: [id], onDelete: Cascade)
+  giver         User        @relation("FeedbackGiver", fields: [giverId], references: [id], onDelete: Cascade)
+  receiver      User        @relation("FeedbackReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([swapRequestId, giverId])
+  @@map("feedback")
+} 
