@@ -27,7 +27,7 @@ sonivinit54
 
 - Shivam Agrawal – agrawalshivam813@gmail.com  
 - Vinit Soni – Sonivinit54@gmail.com  
-- Varun Choudhary – teammate3@example.com  
+- Varun Choudhary – varunchoudhary11223344@gmail.com 
 <!-- Add more members if needed -->
 
 ---
