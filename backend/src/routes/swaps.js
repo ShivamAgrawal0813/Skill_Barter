@@ -11,12 +11,13 @@ const createSwapRequestSchema = Joi.object({
   offeredSkillId: Joi.string().required(),
   requestedSkillId: Joi.string().required(),
   message: Joi.string().max(500).optional(),
-  scheduledDate: Joi.date().optional()
+  scheduledDate: Joi.string().optional()
 });
 
 const updateSwapStatusSchema = Joi.object({
   status: Joi.string().valid('ACCEPTED', 'REJECTED', 'CANCELLED', 'COMPLETED').required(),
-  scheduledDate: Joi.date().optional()
+  scheduledDate: Joi.string().optional(),
+  cancelReason: Joi.string().max(500).optional()
 });
 
 // Helper function to validate request body
@@ -155,7 +156,7 @@ router.post('/', validateRequest(createSwapRequestSchema), async (req, res) => {
         offeredSkillId,
         requestedSkillId,
         message,
-        scheduledDate
+        scheduledDate: scheduledDate ? new Date(scheduledDate) : undefined
       },
       include: {
         sender: {
@@ -400,7 +401,7 @@ router.put('/:id/status', validateRequest(updateSwapStatusSchema), async (req, r
   try {
     const { id } = req.params;
     const userId = req.user.id;
-    const { status, scheduledDate } = req.body;
+    const { status, scheduledDate, cancelReason } = req.body;
 
     // Find swap request
     const swapRequest = await prisma.swapRequest.findFirst({
@@ -416,14 +417,51 @@ router.put('/:id/status', validateRequest(updateSwapStatusSchema), async (req, r
           select: {
             id: true,
             firstName: true,
-            lastName: true
+            lastName: true,
+            location: true,
+            profilePhoto: true,
+            bio: true
           }
         },
         receiver: {
           select: {
             id: true,
             firstName: true,
-            lastName: true
+            lastName: true,
+            location: true,
+            profilePhoto: true,
+            bio: true
+          }
+        },
+        offeredSkill: {
+          select: {
+            id: true,
+            name: true,
+            category: true,
+            description: true
+          }
+        },
+        requestedSkill: {
+          select: {
+            id: true,
+            name: true,
+            category: true,
+            description: true
+          }
+        },
+        feedback: {
+          select: {
+            id: true,
+            rating: true,
+            comment: true,
+            createdAt: true,
+            giver: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true
+              }
+            }
           }
         }
       }
@@ -451,43 +489,91 @@ router.put('/:id/status', validateRequest(updateSwapStatusSchema), async (req, r
           message: 'Only the sender can cancel a swap request'
         });
       }
+    } else if (status === 'COMPLETED') {
+      if (swapRequest.senderId !== userId && swapRequest.receiverId !== userId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Only participants can mark a swap as completed'
+        });
+      }
+    }
+
+    // Validate scheduled date for accepted swaps
+    if (status === 'ACCEPTED' && scheduledDate) {
+      const scheduledDateTime = new Date(scheduledDate);
+      const now = new Date();
+      
+      if (scheduledDateTime <= now) {
+        return res.status(400).json({
+          success: false,
+          message: 'Scheduled date must be in the future'
+        });
+      }
     }
 
     // Update swap request
+    const updateData = {
+      status,
+      updatedAt: new Date()
+    };
+
+    if (status === 'ACCEPTED' && scheduledDate) {
+      updateData.scheduledDate = new Date(scheduledDate);
+    }
+
     const updatedSwapRequest = await prisma.swapRequest.update({
       where: { id },
-      data: {
-        status,
-        scheduledDate: status === 'ACCEPTED' ? scheduledDate : undefined,
-        updatedAt: new Date()
-      },
+      data: updateData,
       include: {
         sender: {
           select: {
             id: true,
             firstName: true,
-            lastName: true
+            lastName: true,
+            location: true,
+            profilePhoto: true,
+            bio: true
           }
         },
         receiver: {
           select: {
             id: true,
             firstName: true,
-            lastName: true
+            lastName: true,
+            location: true,
+            profilePhoto: true,
+            bio: true
           }
         },
         offeredSkill: {
           select: {
             id: true,
             name: true,
-            category: true
+            category: true,
+            description: true
           }
         },
         requestedSkill: {
           select: {
             id: true,
             name: true,
-            category: true
+            category: true,
+            description: true
+          }
+        },
+        feedback: {
+          select: {
+            id: true,
+            rating: true,
+            comment: true,
+            createdAt: true,
+            giver: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true
+              }
+            }
           }
         }
       }
@@ -507,6 +593,12 @@ router.put('/:id/status', validateRequest(updateSwapStatusSchema), async (req, r
     } else if (status === 'CANCELLED') {
       sendNotification(req, swapRequest.receiverId, 'A swap request was cancelled', {
         type: 'SWAP_CANCELLED',
+        swapRequest: updatedSwapRequest
+      });
+    } else if (status === 'COMPLETED') {
+      const otherUserId = swapRequest.senderId === userId ? swapRequest.receiverId : swapRequest.senderId;
+      sendNotification(req, otherUserId, 'A swap has been marked as completed', {
+        type: 'SWAP_COMPLETED',
         swapRequest: updatedSwapRequest
       });
     }
@@ -569,6 +661,50 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error cancelling swap request'
+    });
+  }
+});
+
+// DELETE /api/swaps/:id/delete - Permanently delete swap request
+router.delete('/:id/delete', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const swapRequest = await prisma.swapRequest.findFirst({
+      where: {
+        id,
+        OR: [
+          { senderId: userId },
+          { receiverId: userId }
+        ],
+        status: {
+          in: ['COMPLETED', 'CANCELLED', 'REJECTED']
+        }
+      }
+    });
+
+    if (!swapRequest) {
+      return res.status(404).json({
+        success: false,
+        message: 'Swap request not found or cannot be deleted'
+      });
+    }
+
+    // Permanently delete the swap request
+    await prisma.swapRequest.delete({
+      where: { id }
+    });
+
+    res.json({
+      success: true,
+      message: 'Swap request deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete swap request error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting swap request'
     });
   }
 });

@@ -110,6 +110,8 @@ export const swapAPI = {
   getSwapRequest: (id) => api.get(`/swaps/${id}`),
   updateSwapStatus: (id, statusData) => api.put(`/swaps/${id}/status`, statusData),
   cancelSwapRequest: (id) => api.delete(`/swaps/${id}`),
+  deleteSwapRequest: (id) => api.delete(`/swaps/${id}/delete`),
+  scheduleSwap: (id, scheduledDate) => api.put(`/swaps/${id}/status`, { status: 'ACCEPTED', scheduledDate }),
 };
 
 export const feedbackAPI = {
