@@ -46,6 +46,18 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, [token]);
 
+  // Fetch complete user profile including skills
+  const fetchUserProfile = async () => {
+    if (token) {
+      try {
+        const response = await api.get('/users/profile');
+        setUser(response.data.data.user);
+      } catch (error) {
+        console.error('Failed to fetch user profile:', error);
+      }
+    }
+  };
+
   const login = async (email, password) => {
     try {
       const response = await api.post('/auth/login', { email, password });
@@ -107,6 +119,7 @@ export const AuthProvider = ({ children }) => {
     signup,
     logout,
     updateUser,
+    fetchUserProfile,
     isAuthenticated: !!user,
   };
 

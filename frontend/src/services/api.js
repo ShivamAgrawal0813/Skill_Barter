@@ -83,6 +83,10 @@ export const authAPI = {
 export const userAPI = {
   getProfile: () => api.get('/users/profile'),
   updateProfile: (data) => api.put('/users/profile', data),
+  uploadProfilePhoto: (formData) => api.post('/users/profile/photo', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  removeProfilePhoto: () => api.delete('/users/profile/photo'),
   searchUsers: (params) => api.get('/users/search', { params }),
   getUser: (id) => api.get(`/users/${id}`),
   addSkill: (skillData) => api.post('/users/skills', skillData),

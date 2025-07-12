@@ -1,9 +1,33 @@
 const express = require('express');
 const Joi = require('joi');
 const { PrismaClient } = require('@prisma/client');
+const multer = require('multer');
+const cloudinary = require('cloudinary').v2;
 
 const router = express.Router();
 const prisma = new PrismaClient();
+
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+// Configure multer for memory storage
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'), false);
+    }
+  }
+});
 
 // Validation schemas
 const updateProfileSchema = Joi.object({
@@ -149,6 +173,192 @@ router.put('/profile', validateRequest(updateProfileSchema), async (req, res) =>
   }
 });
 
+// POST /api/users/profile/photo - Upload profile photo
+router.post('/profile/photo', upload.single('photo'), async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No image file provided'
+      });
+    }
+
+    // Convert buffer to base64
+    const b64 = Buffer.from(req.file.buffer).toString('base64');
+    const dataURI = `data:${req.file.mimetype};base64,${b64}`;
+
+    // Upload to Cloudinary
+    const result = await cloudinary.uploader.upload(dataURI, {
+      folder: 'skill-barter/profiles',
+      transformation: [
+        { width: 400, height: 400, crop: 'fill', gravity: 'face' },
+        { quality: 'auto', fetch_format: 'auto' }
+      ]
+    });
+
+    // Update user profile with new photo URL
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { profilePhoto: result.secure_url },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        location: true,
+        bio: true,
+        profilePhoto: true,
+        profileVisibility: true,
+        isAvailable: true,
+        updatedAt: true
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Profile photo updated successfully',
+      data: { user }
+    });
+  } catch (error) {
+    console.error('Upload profile photo error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error uploading profile photo'
+    });
+  }
+});
+
+// DELETE /api/users/profile/photo - Remove profile photo
+router.delete('/profile/photo', async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Get current user to check if they have a profile photo
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { profilePhoto: true }
+    });
+
+    if (currentUser?.profilePhoto) {
+      // Extract public ID from Cloudinary URL
+      const urlParts = currentUser.profilePhoto.split('/');
+      const publicId = urlParts[urlParts.length - 1].split('.')[0];
+      const fullPublicId = `skill-barter/profiles/${publicId}`;
+
+      // Delete from Cloudinary
+      try {
+        await cloudinary.uploader.destroy(fullPublicId);
+      } catch (cloudinaryError) {
+        console.error('Cloudinary delete error:', cloudinaryError);
+        // Continue even if Cloudinary delete fails
+      }
+    }
+
+    // Update user profile to remove photo URL
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { profilePhoto: null },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        location: true,
+        bio: true,
+        profilePhoto: true,
+        profileVisibility: true,
+        isAvailable: true,
+        updatedAt: true
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Profile photo removed successfully',
+      data: { user }
+    });
+  } catch (error) {
+    console.error('Remove profile photo error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error removing profile photo'
+    });
+  }
+});
+
+// GET /api/users - Get all public users
+router.get('/', async (req, res) => {
+  try {
+    const { 
+      publicOnly = 'true',
+      limit = 20, 
+      offset = 0 
+    } = req.query;
+
+    // Build where clause
+    const where = {};
+    
+    if (publicOnly === 'true') {
+      where.profileVisibility = 'PUBLIC';
+    }
+
+    // Get users with their skills
+    const users = await prisma.user.findMany({
+      where,
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        location: true,
+        bio: true,
+        profilePhoto: true,
+        isAvailable: true,
+        createdAt: true,
+        userSkills: {
+          select: {
+            skillType: true,
+            level: true,
+            skill: {
+              select: {
+                id: true,
+                name: true,
+                category: true
+              }
+            }
+          }
+        }
+      },
+      take: parseInt(limit),
+      skip: parseInt(offset),
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // Get total count
+    const totalCount = await prisma.user.count({ where });
+
+    res.json({
+      success: true,
+      data: {
+        users,
+        pagination: {
+          total: totalCount,
+          limit: parseInt(limit),
+          offset: parseInt(offset),
+          hasMore: totalCount > parseInt(offset) + users.length
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get users error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching users'
+    });
+  }
+});
+
 // GET /api/users/search - Search users by skills
 router.get('/search', async (req, res) => {
   try {
@@ -206,13 +416,20 @@ router.get('/search', async (req, res) => {
       orderBy: { createdAt: 'desc' }
     });
 
-    // Filter by skill if provided
+    // Filter by skill and skill type if provided
     let filteredUsers = users;
     if (skill) {
       filteredUsers = users.filter(user => 
-        user.userSkills.some(userSkill => 
-          userSkill.skill.name.toLowerCase().includes(skill.toLowerCase())
-        )
+        user.userSkills.some(userSkill => {
+          const skillMatches = userSkill.skill.name.toLowerCase().includes(skill.toLowerCase());
+          const typeMatches = !skillType || userSkill.skillType === skillType;
+          return skillMatches && typeMatches;
+        })
+      );
+    } else if (skillType) {
+      // If only skillType is provided, filter by type only
+      filteredUsers = users.filter(user => 
+        user.userSkills.some(userSkill => userSkill.skillType === skillType)
       );
     }
 
