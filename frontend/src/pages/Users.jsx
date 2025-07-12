@@ -14,12 +14,15 @@ const Users = () => {
   const [skillType, setSkillType] = useState('OFFERED');
   const [filterAvailable, setFilterAvailable] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [pagination, setPagination] = useState({ total: 0, limit: 12, offset: 0 });
 
   useEffect(() => {
     const fetchUsers = async () => {
       try {
         setLoading(true);
-        const params = { publicOnly: 'true' };
+        const params = { publicOnly: 'true', limit: pagination.limit, offset: (page - 1) * pagination.limit };
         if (filterAvailable) {
           params.available = 'true';
         }
@@ -29,6 +32,10 @@ const Users = () => {
         }
         const res = await userAPI.searchUsers(params);
         setUsers(res.data.data.users || []);
+        if (res.data.data.pagination) {
+          setPagination(res.data.data.pagination);
+          setTotalPages(Math.ceil(res.data.data.pagination.total / res.data.data.pagination.limit));
+        }
       } catch (err) {
         setError('Failed to load users');
       } finally {
@@ -36,7 +43,7 @@ const Users = () => {
       }
     };
     fetchUsers();
-  }, [filterAvailable, selectedSkill, skillType]);
+  }, [filterAvailable, selectedSkill, skillType, page]);
 
   useEffect(() => {
     const fetchSkills = async () => {
@@ -178,7 +185,7 @@ const Users = () => {
         </p>
       </div>
 
-      {filteredUsers.length === 0 ? (
+      {users.length === 0 ? (
         <div className="text-center py-12">
           <div className="text-gray-400 mb-4">
             <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -191,11 +198,41 @@ const Users = () => {
           </p>
         </div>
       ) : (
+        <>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredUsers.map(user => (
+          {users.map(user => (
             <UserCard key={user.id} user={user} />
           ))}
         </div>
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex justify-center mt-8 space-x-2">
+            <button
+              onClick={() => setPage(page - 1)}
+              disabled={page === 1}
+              className="px-3 py-1 rounded bg-gray-100 text-gray-700 disabled:opacity-50"
+            >
+              Prev
+            </button>
+            {[...Array(totalPages)].map((_, idx) => (
+              <button
+                key={idx + 1}
+                onClick={() => setPage(idx + 1)}
+                className={`px-3 py-1 rounded ${page === idx + 1 ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+              >
+                {idx + 1}
+              </button>
+            ))}
+            <button
+              onClick={() => setPage(page + 1)}
+              disabled={page === totalPages}
+              className="px-3 py-1 rounded bg-gray-100 text-gray-700 disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        )}
+        </>
       )}
     </div>
   );

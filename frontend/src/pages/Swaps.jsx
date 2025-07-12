@@ -24,20 +24,29 @@ const Swaps = () => {
   const [activeTab, setActiveTab] = useState('received');
   const [statusFilter, setStatusFilter] = useState('all');
   const [refreshing, setRefreshing] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [pagination, setPagination] = useState({ total: 0, limit: 10, offset: 0 });
 
   useEffect(() => {
     fetchSwaps();
-  }, [activeTab, statusFilter]);
+  }, [activeTab, statusFilter, page]);
 
   const fetchSwaps = async () => {
     try {
       setLoading(true);
       const params = {
         type: activeTab === 'sent' ? 'sent' : 'received',
-        status: statusFilter === 'all' ? undefined : statusFilter
+        status: statusFilter === 'all' ? undefined : statusFilter,
+        limit: pagination.limit,
+        offset: (page - 1) * pagination.limit
       };
       const response = await swapAPI.getSwapRequests(params);
-      setSwaps(response.data.data.swaps || []);
+      setSwaps(response.data.data.swapRequests || response.data.data.swaps || []);
+      if (response.data.data.pagination) {
+        setPagination(response.data.data.pagination);
+        setTotalPages(Math.ceil(response.data.data.pagination.total / response.data.data.pagination.limit));
+      }
     } catch (error) {
       console.error('Failed to fetch swaps:', error);
       toast.error('Failed to load swaps');
@@ -267,110 +276,141 @@ const Swaps = () => {
                 )}
               </div>
             ) : (
-              <div className="space-y-4">
-                {swaps.map((swap) => (
-                  <div
-                    key={swap.id}
-                    className="bg-gray-50 rounded-lg p-6 border border-gray-200"
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="text-lg font-semibold text-gray-900">
-                            {activeTab === 'sent' ? swap.receiver.firstName : swap.sender.firstName}{' '}
-                            {activeTab === 'sent' ? swap.receiver.lastName : swap.sender.lastName}
-                          </h3>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(swap.status)}`}>
-                            {getStatusIcon(swap.status)}
-                            <span className="ml-1">{swap.status}</span>
-                          </span>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                          <div className="bg-white rounded-lg p-3">
-                            <p className="text-sm font-medium text-gray-700 mb-1">You're offering:</p>
-                            <p className="text-gray-900">{swap.offeredSkill.name}</p>
-                            <p className="text-xs text-gray-500">{swap.offeredSkill.category}</p>
+              <>
+                <div className="space-y-4">
+                  {swaps.map((swap) => (
+                    <div
+                      key={swap.id}
+                      className="bg-gray-50 rounded-lg p-6 border border-gray-200"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              {activeTab === 'sent' ? swap.receiver.firstName : swap.sender.firstName}{' '}
+                              {activeTab === 'sent' ? swap.receiver.lastName : swap.sender.lastName}
+                            </h3>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(swap.status)}`}>
+                              {getStatusIcon(swap.status)}
+                              <span className="ml-1">{swap.status}</span>
+                            </span>
                           </div>
-                          <div className="bg-white rounded-lg p-3">
-                            <p className="text-sm font-medium text-gray-700 mb-1">You're requesting:</p>
-                            <p className="text-gray-900">{swap.requestedSkill.name}</p>
-                            <p className="text-xs text-gray-500">{swap.requestedSkill.category}</p>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div className="bg-white rounded-lg p-3">
+                              <p className="text-sm font-medium text-gray-700 mb-1">You're offering:</p>
+                              <p className="text-gray-900">{swap.offeredSkill.name}</p>
+                              <p className="text-xs text-gray-500">{swap.offeredSkill.category}</p>
+                            </div>
+                            <div className="bg-white rounded-lg p-3">
+                              <p className="text-sm font-medium text-gray-700 mb-1">You're requesting:</p>
+                              <p className="text-gray-900">{swap.requestedSkill.name}</p>
+                              <p className="text-xs text-gray-500">{swap.requestedSkill.category}</p>
+                            </div>
                           </div>
-                        </div>
 
-                        {swap.message && (
-                          <div className="bg-blue-50 rounded-lg p-3 mb-4">
-                            <p className="text-sm text-blue-800">{swap.message}</p>
-                          </div>
-                        )}
-
-                        <div className="flex items-center space-x-4 text-sm text-gray-600">
-                          <div className="flex items-center">
-                            <Calendar className="w-4 h-4 mr-1" />
-                            <span>Created: {formatDate(swap.createdAt)}</span>
-                          </div>
-                          {swap.scheduledDate && (
-                            <div className="flex items-center">
-                              <Calendar className="w-4 h-4 mr-1" />
-                              <span>Scheduled: {formatDate(swap.scheduledDate)}</span>
+                          {swap.message && (
+                            <div className="bg-blue-50 rounded-lg p-3 mb-4">
+                              <p className="text-sm text-blue-800">{swap.message}</p>
                             </div>
                           )}
+
+                          <div className="flex items-center space-x-4 text-sm text-gray-600">
+                            <div className="flex items-center">
+                              <Calendar className="w-4 h-4 mr-1" />
+                              <span>Created: {formatDate(swap.createdAt)}</span>
+                            </div>
+                            {swap.scheduledDate && (
+                              <div className="flex items-center">
+                                <Calendar className="w-4 h-4 mr-1" />
+                                <span>Scheduled: {formatDate(swap.scheduledDate)}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex flex-col space-y-2 ml-4">
+                          {activeTab === 'received' && swap.status === 'PENDING' && (
+                            <>
+                              <button
+                                onClick={() => handleStatusUpdate(swap.id, 'ACCEPTED')}
+                                disabled={refreshing}
+                                className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
+                              >
+                                Accept
+                              </button>
+                              <button
+                                onClick={() => handleStatusUpdate(swap.id, 'REJECTED')}
+                                disabled={refreshing}
+                                className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
+                          
+                          {swap.status === 'ACCEPTED' && (
+                            <button
+                              onClick={() => handleStatusUpdate(swap.id, 'COMPLETED')}
+                              disabled={refreshing}
+                              className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
+                            >
+                              Mark Complete
+                            </button>
+                          )}
+
+                          {(swap.status === 'PENDING' || swap.status === 'ACCEPTED') && (
+                            <button
+                              onClick={() => handleCancelSwap(swap.id)}
+                              disabled={refreshing}
+                              className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
+                            >
+                              Cancel
+                            </button>
+                          )}
+
+                          <Link
+                            to={`/swaps/${swap.id}`}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm text-center"
+                          >
+                            View Details
+                          </Link>
                         </div>
                       </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex flex-col space-y-2 ml-4">
-                        {activeTab === 'received' && swap.status === 'PENDING' && (
-                          <>
-                            <button
-                              onClick={() => handleStatusUpdate(swap.id, 'ACCEPTED')}
-                              disabled={refreshing}
-                              className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
-                            >
-                              Accept
-                            </button>
-                            <button
-                              onClick={() => handleStatusUpdate(swap.id, 'REJECTED')}
-                              disabled={refreshing}
-                              className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
-                            >
-                              Reject
-                            </button>
-                          </>
-                        )}
-                        
-                        {swap.status === 'ACCEPTED' && (
-                          <button
-                            onClick={() => handleStatusUpdate(swap.id, 'COMPLETED')}
-                            disabled={refreshing}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
-                          >
-                            Mark Complete
-                          </button>
-                        )}
-
-                        {(swap.status === 'PENDING' || swap.status === 'ACCEPTED') && (
-                          <button
-                            onClick={() => handleCancelSwap(swap.id)}
-                            disabled={refreshing}
-                            className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
-                          >
-                            Cancel
-                          </button>
-                        )}
-
-                        <Link
-                          to={`/swaps/${swap.id}`}
-                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm text-center"
-                        >
-                          View Details
-                        </Link>
-                      </div>
                     </div>
+                  ))}
+                </div>
+                
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="flex justify-center mt-8 space-x-2">
+                    <button
+                      onClick={() => setPage(page - 1)}
+                      disabled={page === 1}
+                      className="px-3 py-1 rounded bg-gray-100 text-gray-700 disabled:opacity-50"
+                    >
+                      Prev
+                    </button>
+                    {[...Array(totalPages)].map((_, idx) => (
+                      <button
+                        key={idx + 1}
+                        onClick={() => setPage(idx + 1)}
+                        className={`px-3 py-1 rounded ${page === idx + 1 ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+                      >
+                        {idx + 1}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setPage(page + 1)}
+                      disabled={page === totalPages}
+                      className="px-3 py-1 rounded bg-gray-100 text-gray-700 disabled:opacity-50"
+                    >
+                      Next
+                    </button>
                   </div>
-                ))}
-              </div>
+                )}
+              </>
             )}
           </div>
         </div>
