@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { userAPI } from '../services/api';
+import { userAPI, feedbackAPI } from '../services/api';
 import { toast } from 'react-hot-toast';
 import SwapRequestModal from '../components/SwapRequestModal';
+import FeedbackDisplay from '../components/FeedbackDisplay';
 import {
   ArrowLeft,
   MapPin,
@@ -12,7 +13,10 @@ import {
   MessageSquare,
   Clock,
   Eye,
-  EyeOff
+  EyeOff,
+  Award,
+  TrendingUp,
+  Users
 } from 'lucide-react';
 
 const UserProfile = () => {
@@ -22,9 +26,16 @@ const UserProfile = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showSwapModal, setShowSwapModal] = useState(false);
+  const [feedback, setFeedback] = useState([]);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [feedbackStats, setFeedbackStats] = useState({
+    averageRating: 0,
+    totalReviews: 0
+  });
 
   useEffect(() => {
     fetchUserProfile();
+    fetchUserFeedback();
   }, [id]);
 
   const fetchUserProfile = async () => {
@@ -38,6 +49,25 @@ const UserProfile = () => {
       navigate('/users');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchUserFeedback = async () => {
+    try {
+      setFeedbackLoading(true);
+      const response = await feedbackAPI.getUserFeedback(id, { limit: 10 });
+      const feedbackData = response.data.data;
+      setFeedback(feedbackData.feedback || []);
+      setFeedbackStats({
+        averageRating: feedbackData.stats?.averageRating || 0,
+        totalReviews: feedbackData.stats?.totalReviews || 0
+      });
+    } catch (error) {
+      console.error('Failed to fetch user feedback:', error);
+      setFeedback([]);
+      setFeedbackStats({ averageRating: 0, totalReviews: 0 });
+    } finally {
+      setFeedbackLoading(false);
     }
   };
 
@@ -255,6 +285,47 @@ const UserProfile = () => {
               </div>
             </div>
           )}
+
+          {/* Feedback Section */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-semibold text-gray-900 flex items-center">
+                <Award className="w-5 h-5 mr-2 text-yellow-600" />
+                Feedback & Reviews
+              </h3>
+              {feedbackStats.totalReviews > 0 && (
+                <div className="flex items-center space-x-2">
+                  <div className="flex items-center">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`w-4 h-4 ${
+                          i < Math.round(feedbackStats.averageRating) ? 'text-yellow-500 fill-current' : 'text-gray-300'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-sm text-gray-600">
+                    ({feedbackStats.averageRating.toFixed(1)} avg, {feedbackStats.totalReviews} reviews)
+                  </span>
+                </div>
+              )}
+            </div>
+            
+            {feedbackLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="mt-2 text-gray-600">Loading feedback...</p>
+              </div>
+            ) : (
+              <FeedbackDisplay 
+                feedback={feedback}
+                showUserInfo={true}
+                showSwapInfo={true}
+                showActions={false}
+              />
+            )}
+          </div>
         </div>
 
         {/* Sidebar */}
@@ -315,6 +386,16 @@ const UserProfile = () => {
               <div className="flex justify-between">
                 <span className="text-gray-600">Availability:</span>
                 <span className="font-medium">{user.availabilities?.length || 0}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Average Rating:</span>
+                <span className="font-medium">
+                  {feedbackStats.totalReviews > 0 ? `${feedbackStats.averageRating.toFixed(1)}/5` : 'No reviews'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Total Reviews:</span>
+                <span className="font-medium">{feedbackStats.totalReviews}</span>
               </div>
             </div>
           </div>
