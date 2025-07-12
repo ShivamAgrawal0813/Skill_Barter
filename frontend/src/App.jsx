@@ -8,6 +8,7 @@ import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
 import UserProfile from './pages/UserProfile';
+import Users from './pages/Users';
 import Skills from './pages/Skills';
 import Swaps from './pages/Swaps';
 import SwapDetail from './pages/SwapDetail';
@@ -90,6 +91,16 @@ function App() {
             <ProtectedRoute>
               <Layout>
                 <Profile />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/users"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <Users />
               </Layout>
             </ProtectedRoute>
           }
