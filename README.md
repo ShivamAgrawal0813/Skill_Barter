@@ -1,295 +1,198 @@
-# Skill Barter - Skill Swap Platform
+# Skill Barter
 
-## 🚀 Problem Statement
-
-Problem Statement 1: Skill Swap Platform – Odoo Hackathon 2025
-
-Build a mini web application that enables users to list their skills and request others in return. The platform should allow users to:
-
-- Create and manage a public or private profile
-- Add skills they offer and skills they want to learn
-- Search other users by skill
-- Send, accept, or reject skill swap requests
-- View pending or completed swaps
-- Leave feedback or ratings after a successful swap
-
-This platform promotes collaborative learning and community upskilling by facilitating direct peer-to-peer skill exchanges.
+A peer-to-peer skill exchange platform built to foster collaborative learning and community upskilling. Skill Barter allows users to list skills they possess, discover users offering skills they wish to learn, send and manage swap requests, and leave ratings upon completion.
 
 ---
 
-## 👥 Team Name
+## 🌟 Key Features
 
-sonivinit54
-
----
-
-## 📧 Team Members & Emails
-
-- Shivam Agrawal – agrawalshivam813@gmail.com  
-- Vinit Soni – Sonivinit54@gmail.com  
-- Varun Choudhary – varunchoudhary11223344@gmail.com
+- 👤 **User Profiles & Privacy**: Create public or private profiles with customizable bio, avatar, and contact info.
+- 🎯 **Skill Management**: Easily showcase skills you offer alongside skills you want to learn with custom proficiency levels.
+- 🔍 **Discovery & Search**: Search for community members based on offered/requested skills, location, or availability.
+- 🔄 **Swap Request System**: Send, accept, reject, or manage pending and completed skill exchange requests seamlessly.
+- ⭐ **Feedback & Ratings**: Build trust in the community by leaving reviews and ratings after successful exchanges.
+- 🔔 **Real-Time Notifications**: Instant updates on swap requests, status changes, and activity via Socket.IO.
+- 📱 **Responsive UI**: Intuitive, modern design built with React, Vite, and TailwindCSS.
 
 ---
 
-## 🔧 Tech Stack
-
-### Backend
-- **Runtime:** Node.js with Express.js
-- **Database:** PostgreSQL with Prisma ORM
-- **Authentication:** JWT (JSON Web Tokens)
-- **Validation:** Joi
-- **File Upload:** Cloudinary
-- **Real-time:** Socket.IO
-- **Security:** Helmet, CORS, bcryptjs
+## 🛠️ Tech Stack
 
 ### Frontend
-- **Framework:** React 18 with Vite
+- **Framework:** React 18 (Vite)
 - **Styling:** TailwindCSS
 - **Routing:** React Router DOM
-- **State Management:** React Context API
-- **HTTP Client:** Axios
+- **State & HTTP:** React Context API & Axios
 - **Real-time:** Socket.IO Client
-- **Forms:** React Hook Form
-- **Notifications:** React Hot Toast
-- **Icons:** Lucide React
+- **Forms & UI:** React Hook Form, React Hot Toast, Lucide React
 
-### Development Tools
-- **Package Manager:** npm
-- **Linting:** ESLint
-- **Build Tool:** Vite
-- **Database Management:** Prisma Studio
+### Backend
+- **Runtime:** Node.js & Express.js
+- **Database & ORM:** PostgreSQL with Prisma ORM
+- **Authentication:** JWT (JSON Web Tokens) with `bcryptjs`
+- **Validation:** Joi
+- **Media Uploads:** Cloudinary
+- **Real-time Engine:** Socket.IO
+- **Security:** Helmet & CORS middleware
 
 ---
 
-## 📂 Features Implemented
+## 📂 Project Structure
 
-### ✅ Core Features
-- **User Authentication:** Complete signup/login system with JWT
-- **Profile Management:** Public/private profiles with bio, location, and photo
-- **Skills System:** Add offered and wanted skills with proficiency levels
-- **User Search:** Find users by skills and location
-- **Swap Requests:** Send, accept, reject, and manage skill swap requests
-- **Feedback System:** Rate and review completed swaps
-- **Real-time Notifications:** Live updates for swap requests and messages
-- **Responsive Design:** Mobile-first approach with TailwindCSS
-
-### 🔄 In Progress
-- Advanced search and filtering
-- Skill categories and tags
-- Availability scheduling
-- Chat system for swap coordination
+```
+skill-barter/
+├── backend/
+│   ├── prisma/
+│   │   ├── schema.prisma      # PostgreSQL schema
+│   │   └── seed.js            # Database seeder script
+│   ├── src/
+│   │   ├── middleware/        # Authentication & error handling
+│   │   ├── routes/            # REST API endpoint routes
+│   │   ├── validations/       # Input validation schemas
+│   │   └── server.js          # Express server & WebSockets entrypoint
+│   ├── package.json
+│   └── .env.example
+├── frontend/
+│   ├── src/
+│   │   ├── components/        # Reusable UI components
+│   │   ├── contexts/          # React Context providers
+│   │   ├── pages/             # Route page views
+│   │   ├── services/          # API client services
+│   │   ├── App.jsx            # Core application router
+│   │   └── main.jsx           # App entry point
+│   ├── package.json
+│   └── vite.config.js
+├── package.json               # Root scripts (Concurrently execution)
+└── README.md
+```
 
 ---
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js (v16 or higher)
-- npm or yarn
-- PostgreSQL database
-- Cloudinary account (for image uploads)
+
+Ensure you have the following installed on your environment:
+- **Node.js**: v16.x or higher
+- **npm** or **yarn**
+- **PostgreSQL**: Local or cloud database instance
+- **Cloudinary Account**: For managing image uploads
 
 ### Installation
 
-1. **Clone the repository**
-```bash
-git clone https://github.com/your-team/skill-barter.git
-cd skill-barter
-```
+1. **Clone the Repository**
+   ```bash
+   git clone https://github.com/ShivamAgrawal0813/Skill_Barter.git
+   cd Skill_Barter
+   ```
 
-2. **Install dependencies**
-```bash
-# Install backend dependencies
-cd backend
-npm install
+2. **Install Dependencies**
+   Run the root helper command to install dependencies across root, backend, and frontend:
+   ```bash
+   npm run install:all
+   ```
+   *(Or manually run `npm install` inside both `./backend` and `./frontend`)*
 
-# Install frontend dependencies
-cd ../frontend
-npm install
-```
+3. **Configure Environment Variables**
 
-3. **Set up environment variables**
-```bash
-# Backend
-cd ../backend
-cp .env.example .env
-```
+   Create a `.env` file in the `backend/` directory based on `.env.example`:
+   ```env
+   # Database
+   DATABASE_URL="postgresql://user:password@localhost:5432/skillbarter?schema=public"
 
-Edit `backend/.env` with your configuration:
-```env
-# Database
-DATABASE_URL="your-postgresql-connection-string"
+   # Authentication
+   JWT_SECRET="your-super-secret-jwt-key"
+   JWT_EXPIRES_IN="7d"
 
-# JWT
-JWT_SECRET="your-super-secret-jwt-key"
-JWT_EXPIRES_IN="7d"
+   # Server
+   PORT=5000
+   NODE_ENV="development"
 
-# Server
-PORT=5000
-NODE_ENV="development"
+   # Cloudinary Setup
+   CLOUDINARY_CLOUD_NAME="your-cloud-name"
+   CLOUDINARY_API_KEY="your-api-key"
+   CLOUDINARY_API_SECRET="your-api-secret"
 
-# Cloudinary
-CLOUDINARY_CLOUD_NAME="your-cloud-name"
-CLOUDINARY_API_KEY="your-api-key"
-CLOUDINARY_API_SECRET="your-api-secret"
+   # CORS Configuration
+   FRONTEND_URL="http://localhost:3000"
+   ```
 
-# CORS
-FRONTEND_URL="http://localhost:3000"
-```
+4. **Initialize Database**
+   Generate Prisma client and apply schema to your database:
+   ```bash
+   cd backend
+   npx prisma generate
+   npx prisma db push
+   npx prisma db seed
+   cd ..
+   ```
 
-4. **Set up the database**
-```bash
-cd backend
-npx prisma generate
-npx prisma db push
-npx prisma db seed
-```
+5. **Run Development Mode**
+   Start both backend and frontend concurrently from the root folder:
+   ```bash
+   npm run dev
+   ```
 
-5. **Start the development servers**
-```bash
-# Start backend (in backend directory)
-npm run dev
-
-# Start frontend (in frontend directory, new terminal)
-cd ../frontend
-npm run dev
-```
-
-The application will be available at:
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:5000
-- Prisma Studio: http://localhost:5555 (run `npx prisma studio`)
+   - **Frontend App:** http://localhost:3000
+   - **Backend API:** http://localhost:5000
+   - **Prisma Studio (Optional):** Run `npx prisma studio` in `./backend` to view data at http://localhost:5555
 
 ---
 
-## 📁 Project Structure
+## 🔌 API Endpoints Summary
 
-```
-skill-barter/
-├── backend/
-│   ├── prisma/
-│   │   ├── schema.prisma      # Database schema
-│   │   └── seed.js           # Database seeding
-│   ├── src/
-│   │   ├── middleware/       # Auth & error handling
-│   │   ├── routes/           # API endpoints
-│   │   ├── validations/      # Input validation
-│   │   └── server.js         # Main server file
-│   ├── package.json
-│   └── .env.example
-├── frontend/
-│   ├── src/
-│   │   ├── components/       # Reusable UI components
-│   │   ├── contexts/         # React contexts
-│   │   ├── pages/           # Page components
-│   │   ├── services/        # API services
-│   │   ├── App.jsx
-│   │   └── main.jsx
-│   ├── package.json
-│   └── vite.config.js
-└── README.md
-```
+| Module | Method | Endpoint | Description |
+| :--- | :--- | :--- | :--- |
+| **Auth** | `POST` | `/api/auth/register` | Register a new user account |
+| | `POST` | `/api/auth/login` | Authenticate user & get JWT |
+| | `GET` | `/api/auth/me` | Retrieve authenticated user profile |
+| **Users** | `GET` | `/api/users` | List users |
+| | `GET` | `/api/users/:id` | Get public profile details |
+| | `PUT` | `/api/users/:id` | Update profile information |
+| | `GET` | `/api/users/search` | Filter/search users by skill |
+| **Skills** | `GET` | `/api/skills` | List available skills |
+| | `POST` | `/api/skills` | Add a custom skill |
+| | `GET` | `/api/skills/categories` | Fetch skill categories |
+| **Swaps** | `GET` | `/api/swaps` | List user's active/past swap requests |
+| | `POST` | `/api/swaps` | Create a new swap request |
+| | `PUT` | `/api/swaps/:id` | Update swap status (accept/reject/complete) |
+| | `DELETE` | `/api/swaps/:id` | Cancel a pending swap request |
+| **Feedback**| `GET` | `/api/feedback` | Retrieve reviews and ratings |
+| | `POST` | `/api/feedback` | Submit post-swap rating and feedback |
 
 ---
 
-## 🔌 API Endpoints
+## 📜 Available NPM Scripts
 
-### Authentication
-- `POST /api/auth/register` - User registration
-- `POST /api/auth/login` - User login
-- `GET /api/auth/me` - Get current user
+From the root project directory:
+- `npm run dev`: Launch both server and client in development mode concurrently.
+- `npm run install:all`: Install dependencies across root, backend, and frontend directories.
+- `npm run build`: Build production bundles for both backend and frontend.
 
-### Users
-- `GET /api/users` - Get all users
-- `GET /api/users/:id` - Get user by ID
-- `PUT /api/users/:id` - Update user profile
-- `GET /api/users/search` - Search users by skills
+Inside `./backend`:
+- `npm run dev`: Start Express backend server with `nodemon`.
+- `npm start`: Start server in production mode.
+- `npm run db:seed`: Seed database with initial mockup data.
 
-### Skills
-- `GET /api/skills` - Get all skills
-- `POST /api/skills` - Create custom skill
-- `GET /api/skills/categories` - Get skill categories
-
-### Swaps
-- `GET /api/swaps` - Get user's swaps
-- `POST /api/swaps` - Create swap request
-- `PUT /api/swaps/:id` - Update swap status
-- `DELETE /api/swaps/:id` - Cancel swap
-
-### Feedback
-- `GET /api/feedback` - Get user feedback
-- `POST /api/feedback` - Submit feedback
-- `PUT /api/feedback/:id` - Update feedback
-
----
-
-## 🛠️ Development
-
-### Database Commands
-```bash
-# Generate Prisma client
-npx prisma generate
-
-# Push schema changes
-npx prisma db push
-
-# Run migrations
-npx prisma migrate dev
-
-# Open Prisma Studio
-npx prisma studio
-
-# Seed database
-npm run db:seed
-```
-
-### Available Scripts
-
-**Backend:**
-- `npm run dev` - Start development server
-- `npm start` - Start production server
-- `npm run db:generate` - Generate Prisma client
-- `npm run db:push` - Push schema to database
-- `npm run db:seed` - Seed database
-
-**Frontend:**
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build
-- `npm run lint` - Run ESLint
-
----
-
-## 🚀 Deployment
-
-### Backend Deployment
-1. Set up PostgreSQL database (e.g., on Railway, Supabase, or AWS RDS)
-2. Configure environment variables
-3. Deploy to platform of choice (Railway, Render, Heroku, etc.)
-
-### Frontend Deployment
-1. Build the project: `npm run build`
-2. Deploy to Vercel, Netlify, or similar platform
-3. Configure environment variables for API endpoints
+Inside `./frontend`:
+- `npm run dev`: Launch Vite frontend server.
+- `npm run build`: Compile frontend for production.
+- `npm run preview`: Locally preview production build.
 
 ---
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+Contributions, issues, and feature requests are welcome!
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git checkout -b feature/AmazingFeature`)
+5. Open a Pull Request
 
 ---
 
 ## 📄 License
 
-This project is part of the Odoo Hackathon 2025.
+Distributed under the MIT License. See `LICENSE` for more information.
 
----
-
-## 🆘 Support
-
-For support, email agrawalshivam813@gmail.com or create an issue in the repository.
